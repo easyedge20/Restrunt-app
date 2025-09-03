@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gourmet Delights - Interactive Menu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+            color: #334155;
+        }
+        
+        .header-title {
+            font-family: 'Playfair Display', serif;
+            color: #1f2937;
+        }
+        
+        .menu-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: grab;
+            user-select: none;
+            position: absolute;
+            width: 100%;
+            max-width: 400px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .menu-card:active {
+            cursor: grabbing;
+        }
+        
+        .category-tab {
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .category-tab.active {
+            border-bottom-color: #dc2626;
+            color: #dc2627;
+            font-weight: 600;
+        }
+        
+        .swipe-left {
+            transform: translateX(-100%) rotate(-15deg);
+            opacity: 0;
+        }
+        
+        .swipe-right {
+            transform: translateX(100%) rotate(15deg);
+            opacity: 0;
+        }
+        
+        .like-overlay {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.9) 0%, rgba(22, 163, 74, 0.9) 100%);
+            border-radius: 12px;
+        }
+        
+        .dislike-overlay {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%);
+            border-radius: 12px;
+        }
+        
+        .price-tag {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-weight: 600;
+        }
+        
+        .food-image {
+            transition: transform 0.3s ease;
+        }
+        
+        .menu-card:hover .food-image {
+            transform: scale(1.05);
+        }
+        
+        .swipe-indicator {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        .card-container {
+            position: relative;
+            height: 500px;
+            margin: 2rem auto;
+            max-width: 400px;
+        }
+        
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* New styles for cart modal */
+        .cart-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .cart-modal.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .cart-content {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 2rem;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .cart-modal.active .cart-content {
+            transform: translateY(0);
+        }
+        
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .reset-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        .reset-button:hover {
+            background: #2563eb;
+        }
+        
+        /* Next Category Button */
+        .next-category-button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-top: 1rem;
+            margin-left: 0.5rem;
+        }
+        
+        .next-category-button:hover {
+            background: #059669;
+        }
+        
+        /* Quantity controls */
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .quantity-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        
+        .quantity-btn:hover {
+            background: #e5e7eb;
+        }
+        
+        .quantity-value {
+            min-width: 30px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        /* Accessibility improvements */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        /* Focus styles for keyboard navigation */
+        button:focus-visible, 
+        .category-tab:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+        
+        /* Item details in cart */
+        .cart-item-details {
+            flex: 1;
+            padding-right: 1rem;
+        }
+        
+        .cart-item-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .cart-item-price {
+            color: #dc2626;
+            font-weight: 600;
+        }
+        
+        .cart-item-total {
+            font-weight: 700;
+            min-width: 80px;
+            text-align: right;
+        }
+        
+        /* Delete button */
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 0.5rem;
+            margin-left: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        
+        .delete-btn:hover {
+            color: #ef4444;
+            background: #fef2f2;
+        }
+        
+        .cart-item-controls {
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Enhanced notification */
+        .custom-notification {
+            position: fixed;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .notification-error {
+            background: #ef4444;
+        }
+        
+        .notification-warning {
+            background: #f59e0b;
+        }
+        
+        /* Order Form Styles */
+        .order-form-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .order-form-modal.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .order-form-content {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 2rem;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .order-form-modal.active .order-form-content {
+            transform: translateY(0);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        
+        .order-summary {
+            background-color: #f9fafb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .order-summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        
+        .order-summary-total {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 1.125rem;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .submit-button {
+            width: 100%;
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .submit-button:hover {
+            background: #059669;
+        }
+        
+        .submit-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-2xl px-4"></div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-6">
+            <div class="text-center">
+                <h1 class="header-title text-4xl md-text-5xl font-bold mb-2">Gourmet Delights</h1>
+                <p class="text-gray-600 text-lg">Swipe to explore our exquisite menu</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Category Tabs -->
+    <div class="container mx-auto px-4 py-6">
+        <div class="flex overflow-x-auto gap-4 pb-4 hide-scrollbar" role="tablist" aria-label="Menu categories">
+            <button class="category-tab flex-shrink-0 px-6 py-3 bg-white rounded-full shadow-md active" 
+                    data-category="all" role="tab" aria-selected="true" aria-controls="all-tab">
+                <i class="fas fa-star mr-2" aria-hidden="true"></i>All Items
+            </button>
+            <button class="category-tab flex-shrink-0 px-6 py-3 bg-white rounded-full shadow-md" 
+                    data-category="appetizers" role="tab" aria-selected="false" aria-controls="appetizers-tab">
+                <i class="fas fa-utensils mr-2" aria-hidden="true"></i>Appetizers
+            </button>
+            <button class="category-tab flex-shrink-0 px-6 py-3 bg-white rounded-full shadow-md" 
+                    data-category="mains" role="tab" aria-selected="false" aria-controls="mains-tab">
+                <i class="fas fa-drumstick-bite mr-2" aria-hidden="true"></i>Main Course
+            </button>
+            <button class="category-tab flex-shrink-0 px-6 py-3 bg-white rounded-full shadow-md" 
+                    data-category="desserts" role="tab" aria-selected="false" aria-controls="desserts-tab">
+                <i class="fas fa-ice-cream mr-2" aria-hidden="true"></i>Desserts
+            </button>
+            <button class="category-tab flex-shrink-0 px-6 py-3 bg-white rounded-full shadow-md" 
+                    data-category="drinks" role="tab" aria-selected="false" aria-controls="drinks-tab">
+                <i class="fas fa-cocktail mr-2" aria-hidden="true"></i>Drinks
+            </button>
+        </div>
+    </div>
+
+    <!-- Menu Cards Container -->
+    <div class="container mx-auto px-4">
+        <div class="card-container" id="cardContainer">
+            <!-- Cards will be dynamically inserted here -->
+        </div>
+
+        <!-- Empty State (initially hidden) -->
+        <div id="emptyState" class="empty-state hidden">
+            <i class="fas fa-utensils text-5xl text-gray-400 mb-4" aria-hidden="true"></i>
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">You've viewed all items!</h3>
+            <p class="text-gray-600 mb-4">Reset to start over or check your cart to place an order.</p>
+            <div class="flex justify-center gap-2">
+                <button class="reset-button" onclick="resetSwipes()">
+                    <i class="fas fa-redo mr-2" aria-hidden="true"></i>Reset Menu
+                </button>
+                <button class="next-category-button" onclick="nextCategory()">
+                    <i class="fas fa-arrow-right mr-2" aria-hidden="true"></i>Next Category
+                </button>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-center gap-8 mt-8">
+            <button class="swipe-indicator w-16 h-16 flex items-center justify-center border-2 border-red-500 text-red-500 rounded-full hover:bg-red-50 transition-colors" 
+                    onclick="swipeLeft()" aria-label="Swipe left (dislike)">
+                <i class="fas fa-times text-2xl" aria-hidden="true"></i>
+            </button>
+            <button class="swipe-indicator w-20 h-20 flex items-center justify-center bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all pulse-animation" 
+                    onclick="swipeRight()" aria-label="Swipe right (like)">
+                <i class="fas fa-heart text-3xl" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Cart Summary -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="font-semibold text-gray-800">Your Selection</h3>
+                    <p class="text-sm text-gray-600" id="cartCount">0 items</p>
+                </div>
+                <button class="bg-red-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-red-700 transition-colors" 
+                        onclick="showCart()" id="viewCartBtn" disabled>
+                    View Cart <i class="fas fa-shopping-cart ml-2" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div class="cart-modal" id="cartModal" aria-hidden="true" aria-labelledby="cartModalTitle">
+        <div class="cart-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="cartModalTitle" class="text-2xl font-bold text-gray-900">Your Order</h2>
+                <button onclick="hideCart()" aria-label="Close cart">
+                    <i class="fas fa-times text-xl text-gray-500 hover:text-gray-700" aria-hidden="true"></i>
+                </button>
+            </div>
+            
+            <div id="cartItemsList">
+                <!-- Cart items will be inserted here -->
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <div class="flex justify-between text-lg font-semibold">
+                    <span>Total:</span>
+                    <span id="cartTotal">$0.00</span>
+                </div>
+                
+                <button onclick="showOrderForm()" class="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors mt-4">
+                    Place Order <i class="fas fa-arrow-right ml-2" aria-hidden="true"></i>
+                </button>
+                
+                <button onclick="clearCart()" class="w-full text-gray-600 py-2 mt-2">
+                    Clear Cart
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Form Modal -->
+    <div class="order-form-modal" id="orderFormModal" aria-hidden="true" aria-labelledby="orderFormTitle">
+        <div class="order-form-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="orderFormTitle" class="text-2xl font-bold text-gray-900">Complete Your Order</h2>
+                <button onclick="hideOrderForm()" aria-label="Close order form">
+                    <i class="fas fa-times text-xl text-gray-500 hover:text-gray-700" aria-hidden="true"></i>
+                </button>
+            </div>
+            
+            <div class="order-summary">
+                <h3 class="font-semibold text-gray-800 mb-3">Order Summary</h3>
+                <div id="orderSummaryItems">
+                    <!-- Order summary items will be inserted here -->
+                </div>
+                <div class="order-summary-total">
+                    <span>Total:</span>
+                    <span id="orderSummaryTotal">$0.00</span>
+                </div>
+            </div>
+            
+            <form id="customerInfoForm">
+                <div class="form-group">
+                    <label for="customerName" class="form-label">Full Name</label>
+                    <input type="text" id="customerName" class="form-input" placeholder="Enter your full name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="customerPhone" class="form-label">Phone Number</label>
+                    <input type="tel" id="customerPhone" class="form-input" placeholder="Enter your phone number" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="customerTable" class="form-label">Table Number</label>
+                    <input type="text" id="customerTable" class="form-input" placeholder="Enter your table number" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="customerNotes" class="form-label">Special Instructions (Optional)</label>
+                    <textarea id="customerNotes" class="form-input" rows="3" placeholder="Any special requests or dietary restrictions"></textarea>
+                </div>
+                
+                <button type="submit" id="submitOrderBtn" class="submit-button">
+                    Submit Order
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hidden iframe for form submission -->
+    <iframe name="hiddenIframe" id="hiddenIframe" style="display: none;"></iframe>
+
+   <script>
+// Add notification queue system
+let notificationQueue = [];
+let isNotificationShowing = false;
+
+// Modified showNotification function
+function showNotification(message, type = 'success') {
+    // Add to queue
+    notificationQueue.push({ message, type });
+    
+    // If no notification is currently showing, display the next one
+    if (!isNotificationShowing) {
+        showNextNotification();
+    }
+}
+
+// Function to show next notification in queue
+function showNextNotification() {
+    if (notificationQueue.length === 0) {
+        isNotificationShowing = false;
+        return;
+    }
+    
+    isNotificationShowing = true;
+    const { message, type } = notificationQueue.shift();
+    
+    const notificationContainer = document.getElementById('notificationContainer');
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `custom-notification ${type === 'error' ? 'notification-error' : type === 'warning' ? 'notification-warning' : ''}`;
+    
+    // Add icon based on type
+    let icon = 'fa-check-circle';
+    if (type === 'error') icon = 'fa-exclamation-circle';
+    if (type === 'warning') icon = 'fa-exclamation-triangle';
+    
+    notification.innerHTML = `
+        <i class="fas ${icon}"></i>
+        <span>${message}</span>
+    `;
+    
+    notification.setAttribute('aria-live', 'polite');
+    
+    // Add to container
+    notificationContainer.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.opacity = '1';
+    }, 10);
+    
+    // Remove after delay and show next notification
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            if (notificationContainer.contains(notification)) {
+                notificationContainer.removeChild(notification);
+            }
+            showNextNotification();
+        }, 300);
+    }, 3000);
+}
+
+// Menu Data
+const menuItems = [
+    {
+        id: 1,
+        name: "Truffle Arancini",
+        category: "appetizers",
+        price: 18,
+        description: "Crispy risotto balls filled with wild mushrooms and truffle, served with parmesan cream",
+        image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/394e8f24-835f-4c68-b087-b02c8fdb1a15.png"
+    },
+    {
+        id: 2,
+        name: "Carpaccio",
+        category: "appetizers",
+        price: 22,
+        description: "Thinly sliced prime beef with arugula, capers, and truffle oil dressing",
+        image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/302c5a89-17e1-4857-8d20-f3ef5457ffc9.png"
+    },
+    {
+        id: 3,
+        name: "Lobster Bisque",
+        category: "appetizers",
+        price: 16,
+        description: "Rich creamy lobster soup with cognac and fresh herbs",
+        image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/24db61b9-5e5b-421b-8880-b2a2961b4f0f.png"
+    },
+    {
+        id: 4,
+        name: "Wagyu Steak",
+        category: "mains",
+        price: 48,
+        description: "Premium A5 Wagyu with roasted vegetables and red wine reduction",
+        image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/5ff41fc5-f9cf-4527-86b5-1777c3bd02f0.png"
+    },
+    {
+        id: 5,
+        name: "Truffle Pasta",
+        category: "mains",
+        price: 32,
+        description: "Fresh handmade pasta with black truffle and parmesan cream sauce",
+        image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a810e4f7-e343-4dcf-bb7c-b59762a8cbb7.png"
+    },
+    {
+        id: 6,
+        name: "Seafood Platter",
+        category: "mains",
+        price: 42,
+        description: "Grilled lobster, scallops, and shrimp with garlic herb butter",
+        image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/401d42fc-9936-4429-8586-0db92a83cbf1.png"
+    },
+    {
+        id: 7,
+        name: "Chocolate Soufflé",
+        category: "desserts",
+        price: 14,
+        description: "Warm chocolate soufflé with vanilla bean ice cream",
+        image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a97d3491-4a50-4457-a350-9ca3a283792d.png"
+    },
+    {
+        id: 8,
+        name: "Berry Panna Cotta",
+        category: "desserts",
+        price: 12,
+        description: "Silky vanilla panna cotta with fresh seasonal berries",
+        image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/6e7c8fbb-f74d-47ce-b9a2-310f65b58721.png"
+    },
+    {
+        id: 9,
+        name: "Signature Cocktail",
+        category: "drinks",
+        price: 15,
+        description: "House special cocktail with premium spirits and fresh citrus",
+        image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/69854dec-c446-4fe1-b5b1-fad1bb82a10d.png"
+    },
+    {
+        id: 10,
+        name: "Wine Flight",
+        category: "drinks",
+        price: 25,
+        description: "Curated selection of three premium wines for tasting",
+        image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/7a24fc12-e4ba-4189-acfd-12b33f617e50.png"
+    }
+];
+
+let currentCardIndex = 0;
+let cartItems = [];
+let currentCategory = 'all';
+let filteredItems = [...menuItems];
+let viewedItems = new Set();
+
+// Initialize the application
+function initApp() {
+    setupCategoryTabs();
+    renderCards();
+    updateCartDisplay();
+    setupKeyboardNavigation();
+    setupOrderForm();
+}
+
+// Set up category tabs
+function setupCategoryTabs() {
+    const tabs = document.querySelectorAll('.category-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+            tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
+            
+            currentCategory = tab.dataset.category;
+            filterItemsByCategory();
+            currentCardIndex = 0;
+            viewedItems.clear();
+            renderCards();
+        });
+    });
+}
+
+// Setup keyboard navigation
+function setupKeyboardNavigation() {
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+            swipeLeft();
+        } else if (e.key === 'ArrowRight') {
+            swipeRight();
+        } else if (e.key === 'Escape' && document.getElementById('cartModal').classList.contains('active')) {
+            hideCart();
+        } else if (e.key === 'Escape' && document.getElementById('orderFormModal').classList.contains('active')) {
+            hideOrderForm();
+        }
+    });
+}
+
+// Filter items by category
+function filterItemsByCategory() {
+    if (currentCategory === 'all') {
+        filteredItems = [...menuItems];
+    } else {
+        filteredItems = menuItems.filter(item => item.category === currentCategory);
+    }
+}
+
+// Render cards
+function renderCards() {
+    const container = document.getElementById('cardContainer');
+    const emptyState = document.getElementById('emptyState');
+    container.innerHTML = '';
+
+    // Check if we've viewed all items in this category
+    const unviewedItems = filteredItems.filter(item => !viewedItems.has(item.id));
+    
+    if (unviewedItems.length === 0) {
+        container.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        return;
+    }
+    
+    container.classList.remove('hidden');
+    emptyState.classList.add('hidden');
+
+    // Show current card and next 2 cards
+    for (let i = 0; i < Math.min(3, unviewedItems.length); i++) {
+        const itemIndex = filteredItems.findIndex(item => item.id === unviewedItems[i].id);
+        const item = filteredItems[itemIndex];
+        const card = createCard(item, i);
+        container.appendChild(card);
+    }
+
+    setupSwipeListeners();
+}
+
+// Create card element
+function createCard(item, index) {
+    const card = document.createElement('div');
+    card.className = 'menu-card';
+    card.dataset.id = item.id;
+    card.style.zIndex = 100 - index;
+    card.style.transform = `translateX(-50%) translateY(${index * 10}px) scale(${1 - index * 0.05})`;
+    card.style.opacity = 1 - index * 0.2;
+    card.setAttribute('aria-label', `${item.name}, ${item.description}, Price: $${item.price}`);
+    
+    card.innerHTML = `
+        <div class="relative overflow-hidden">
+            <img src="${item.image}" alt="${item.name}" class="food-image w-full h-48 object-cover">
+            <div class="absolute top-4 right-4 price-tag">$${item.price}</div>
+        </div>
+        <div class="p-6">
+            <h3 class="text-xl font-bold text-gray-900 mb-2">${item.name}</h3>
+            <p class="text-gray-600 mb-4">${item.description}</p>
+            <div class="flex items-center text-sm text-gray-500">
+                <span class="bg-gray-100 px-3 py-1 rounded-full">${item.category}</span>
+            </div>
+        </div>
+        <div class="like-overlay absolute inset-0 flex items-center justify-center opacity-0 transition-opacity">
+            <i class="fas fa-heart text-white text-6xl"></i>
+        </div>
+        <div class="dislike-overlay absolute inset-0 flex items-center justify-center opacity-0 transition-opacity">
+            <i class="fas fa-times text-white text-6xl"></i>
+        </div>
+    `;
+
+    return card;
+}
+
+// Setup swipe listeners
+function setupSwipeListeners() {
+    const cards = document.querySelectorAll('.menu-card');
+    if (cards.length > 0) {
+        setupCardSwipe(cards[0]);
+    }
+}
+
+// Setup individual card swipe
+function setupCardSwipe(card) {
+    let startX = 0;
+    let currentX = 0;
+    let isDragging = false;
+
+    card.addEventListener('mousedown', handleStart);
+    card.addEventListener('touchstart', handleStart);
+    
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('touchmove', handleMove);
+    
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchend', handleEnd);
+
+    function handleStart(e) {
+        isDragging = true;
+        startX = e.clientX || e.touches[0].clientX;
+        card.style.transition = 'none';
+    }
+
+    function handleMove(e) {
+        if (!isDragging) return;
+        currentX = e.clientX || e.touches[0].clientX;
+        const deltaX = currentX - startX;
+        
+        card.style.transform = `translateX(calc(-50% + ${deltaX}px)) rotate(${deltaX * 0.1}deg)`;
+        
+        // Show like/dislike overlay
+        const likeOverlay = card.querySelector('.like-overlay');
+        const dislikeOverlay = card.querySelector('.dislike-overlay');
+        
+        if (deltaX > 50) {
+            likeOverlay.style.opacity = Math.min(deltaX / 100, 1);
+            dislikeOverlay.style.opacity = 0;
+        } else if (deltaX < -50) {
+            dislikeOverlay.style.opacity = Math.min(-deltaX / 100, 1);
+            likeOverlay.style.opacity = 0;
+        } else {
+            likeOverlay.style.opacity = 0;
+            dislikeOverlay.style.opacity = 0;
+        }
+    }
+
+    function handleEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        const deltaX = currentX - startX;
+        card.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
+        
+        if (deltaX > 100) {
+            // Swipe right - like
+            card.style.transform = 'translateX(1000px) rotate(30deg)';
+            card.style.opacity = '0';
+            const itemId = parseInt(card.dataset.id);
+            const item = filteredItems.find(item => item.id === itemId);
+            setTimeout(() => addToCart(item), 300);
+            markItemAsViewed(itemId);
+            setTimeout(nextCard, 300);
+        } else if (deltaX < -100) {
+            // Swipe left - dislike
+            card.style.transform = 'translateX(-1000px) rotate(-30deg)';
+            card.style.opacity = '0';
+            const itemId = parseInt(card.dataset.id);
+            markItemAsViewed(itemId);
+            setTimeout(nextCard, 300);
+        } else {
+            // Return to center
+            card.style.transform = 'translateX(-50%)';
+            card.querySelector('.like-overlay').style.opacity = '0';
+            card.querySelector('.dislike-overlay').style.opacity = '0';
+        }
+    }
+}
+
+// Mark item as viewed
+function markItemAsViewed(itemId) {
+    viewedItems.add(itemId);
+}
+
+// Programmatic swipe functions
+function swipeLeft() {
+    const card = document.querySelector('.menu-card');
+    if (card) {
+        const itemId = parseInt(card.dataset.id);
+        card.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
+        card.style.transform = 'translateX(-1000px) rotate(-30deg)';
+        card.style.opacity = '0';
+        markItemAsViewed(itemId);
+        setTimeout(nextCard, 300);
+    }
+}
+
+function swipeRight() {
+    const card = document.querySelector('.menu-card');
+    if (card) {
+        const itemId = parseInt(card.dataset.id);
+        const item = filteredItems.find(item => item.id === itemId);
+        card.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
+        card.style.transform = 'translateX(1000px) rotate(30deg)';
+        card.style.opacity = '0';
+        setTimeout(() => addToCart(item), 300);
+        markItemAsViewed(itemId);
+        setTimeout(nextCard, 300);
+    }
+}
+
+// Move to next card
+function nextCard() {
+    currentCardIndex++;
+    renderCards();
+}
+
+// Reset swipes to start over
+function resetSwipes() {
+    viewedItems.clear();
+    currentCardIndex = 0;
+    renderCards();
+    showNotification("Menu reset. Start swiping again!", 'success');
+}
+
+// Navigate to next category
+function nextCategory() {
+    const categories = ['all', 'appetizers', 'mains', 'desserts', 'drinks'];
+    const currentIndex = categories.indexOf(currentCategory);
+    const nextIndex = (currentIndex + 1) % categories.length;
+    
+    // Update UI to show next category
+    const tabs = document.querySelectorAll('.category-tab');
+    tabs.forEach(tab => {
+        tab.classList.remove('active');
+        tab.setAttribute('aria-selected', 'false');
+        if (tab.dataset.category === categories[nextIndex]) {
+            tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
+        }
+    });
+    
+    currentCategory = categories[nextIndex];
+    filterItemsByCategory();
+    currentCardIndex = 0;
+    viewedItems.clear();
+    renderCards();
+    
+    showNotification(`Now viewing: ${currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1)}`, 'success');
+}
+
+// Add item to cart
+function addToCart(item) {
+    // Check if item already exists in cart
+    const existingItemIndex = cartItems.findIndex(cartItem => cartItem.id === item.id);
+    
+    if (existingItemIndex >= 0) {
+        // Increment quantity if item already in cart
+        cartItems[existingItemIndex].quantity += 1;
+    } else {
+        // Add new item with quantity 1
+        cartItems.push({...item, quantity: 1});
+    }
+    
+    updateCartDisplay();
+    
+    // Show added to cart notification
+    showNotification(`${item.name} added to cart!`, 'success');
+}
+
+// Update cart item quantity
+function updateQuantity(itemId, change) {
+    const itemIndex = cartItems.findIndex(item => item.id === itemId);
+    
+    if (itemIndex >= 0) {
+        cartItems[itemIndex].quantity += change;
+        
+        // Remove item if quantity becomes 0
+        if (cartItems[itemIndex].quantity <= 0) {
+            cartItems.splice(itemIndex, 1);
+            showNotification("Item removed from cart", 'error');
+        } else {
+            // Quantity updated notification is intentionally commented out
+        }
+        
+        updateCartDisplay();
+        
+        // Update cart modal if it's open
+        if (document.getElementById('cartModal').classList.contains('active')) {
+            showCart();
+        }
+    }
+}
+
+// Remove item from cart completely
+function removeFromCart(itemId) {
+    const itemIndex = cartItems.findIndex(item => item.id === itemId);
+    
+    if (itemIndex >= 0) {
+        const itemName = cartItems[itemIndex].name;
+        cartItems.splice(itemIndex, 1);
+        updateCartDisplay();
+        
+        // Update cart modal if it's open
+        if (document.getElementById('cartModal').classList.contains('active')) {
+            showCart();
+        }
+        
+        showNotification(`${itemName} removed from cart`, 'error');
+    }
+}
+
+// Update cart display
+function updateCartDisplay() {
+    const cartCount = document.getElementById('cartCount');
+    const viewCartBtn = document.getElementById('viewCartBtn');
+    
+    // Calculate total items count
+    const totalItems = cartItems.reduce((total, item) => total + item.quantity, 0);
+    
+    cartCount.textContent = `${totalItems} ${totalItems === 1 ? 'item' : 'items'}`;
+    
+    // Enable/disable view cart button
+    if (cartItems.length > 0) {
+        viewCartBtn.removeAttribute('disabled');
+    } else {
+        viewCartBtn.setAttribute('disabled', 'true');
+    }
+}
+
+// Show cart modal
+function showCart() {
+    const modal = document.getElementById('cartModal');
+    const cartItemsList = document.getElementById('cartItemsList');
+    const cartTotal = document.getElementById('cartTotal');
+    
+    // Update cart items list
+    if (cartItems.length === 0) {
+        cartItemsList.innerHTML = '<p class="text-gray-500 text-center py-4">Your cart is empty</p>';
+    } else {
+        cartItemsList.innerHTML = cartItems.map(item => `
+            <div class="cart-item">
+                <div class="cart-item-details">
+                    <div class="cart-item-name">${item.name}</div>
+                    <div class="cart-item-price">$${item.price}</div>
+                </div>
+                <div class="cart-item-controls">
+                    <div class="quantity-controls">
+                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, -1)" aria-label="Decrease quantity">-</button>
+                        <span class="quantity-value">${item.quantity}</span>
+                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, 1)" aria-label="Increase quantity">+</button>
+                    </div>
+                    <button class="delete-btn" onclick="removeFromCart(${item.id})" aria-label="Remove item">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="cart-item-total">$${(item.price * item.quantity).toFixed(2)}</div>
+            </div>
+        `).join('');
+    }
+    
+    // Update total
+    const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    cartTotal.textContent = `$${total.toFixed(2)}`;
+    
+    // Show modal
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+// Hide cart modal
+function hideCart() {
+    const modal = document.getElementById('cartModal');
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = 'auto';
+}
+
+// Clear cart
+function clearCart() {
+    if (cartItems.length > 0) {
+        cartItems = [];
+        updateCartDisplay();
+        hideCart();
+        showNotification('Cart cleared', 'success');
+    }
+}
+
+// Show order form modal
+function showOrderForm() {
+    const modal = document.getElementById('orderFormModal');
+    const orderSummaryItems = document.getElementById('orderSummaryItems');
+    const orderSummaryTotal = document.getElementById('orderSummaryTotal');
+    
+    // Update order summary
+    orderSummaryItems.innerHTML = cartItems.map(item => `
+        <div class="order-summary-item">
+            <span>${item.name} x${item.quantity}</span>
+            <span>$${(item.price * item.quantity).toFixed(2)}</span>
+        </div>
+    `).join('');
+    
+    // Update total
+    const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    orderSummaryTotal.textContent = `$${total.toFixed(2)}`;
+    
+    // Show modal
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    
+    // Hide cart modal
+    hideCart();
+}
+
+// Hide order form modal
+function hideOrderForm() {
+    const modal = document.getElementById('orderFormModal');
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = 'auto';
+}
+
+// Setup order form submission
+function setupOrderForm() {
+    const form = document.getElementById('customerInfoForm');
+    form.addEventListener('submit', handleOrderSubmission);
+}
+
+// Update the handleOrderSubmission function to use the notification queue
+function handleOrderSubmission(e) {
+    e.preventDefault();
+
+    const submitBtn = document.getElementById('submitOrderBtn');
+    const customerName = document.getElementById('customerName').value;
+    const customerPhone = document.getElementById('customerPhone').value;
+    const customerTable = document.getElementById('customerTable').value;
+    const customerNotes = document.getElementById('customerNotes').value;
+
+    // Validate inputs
+    if (!customerName.trim()) {
+        showNotification('Please enter your name', 'error');
+        return;
+    }
+
+    if (!customerPhone.trim()) {
+        showNotification('Please enter your phone number', 'error');
+        return;
+    }
+
+    if (!customerTable.trim()) {
+        showNotification('Please enter your table number', 'error');
+        return;
+    }
+
+    // Format order details with line breaks
+    const orderDetails = cartItems.map(item => 
+        `${item.name} (x${item.quantity}) - $${(item.price * item.quantity).toFixed(2)}`
+    ).join('\n');
+    
+    const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Show loading state
+    submitBtn.innerHTML = '<span class="loading-spinner"></span> Processing...';
+    submitBtn.disabled = true;
+    
+    // Submit to Google Form with table number
+    submitToGoogleForm(customerName, customerPhone, customerTable, customerNotes, orderDetails, totalAmount)
+        .then(() => {
+            // Success - this notification will show first
+            showNotification('Order submitted successfully!', 'success');
+            hideOrderForm();
+            
+            // Clear cart after a short delay to ensure the submission notification shows first
+            setTimeout(() => {
+                clearCart();
+            }, 500);
+            
+            // Reset form
+            document.getElementById('customerInfoForm').reset();
+        })
+        .catch(error => {
+            // Error
+            console.error('Error submitting order:', error);
+            showNotification('Failed to submit order. Please try again.', 'error');
+        })
+        .finally(() => {
+            // Reset button state
+            submitBtn.innerHTML = 'Submit Order';
+            submitBtn.disabled = false;
+        });
+}
+
+// Submit data to Google Form
+function submitToGoogleForm(name, phone, table, notes, orderDetails, total) {
+    return new Promise((resolve, reject) => {
+        try {
+            // Create a form element
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSf7CtzoRDUo7ktZV9GJ9LpxXy57GWHngs8qbSZDqAhB64GLNg/formResponse';
+            form.target = 'hiddenIframe';
+            
+            // Add form fields based on the Google Form's field names
+            const fields = [
+                { name: 'entry.1896845657', value: name },           // Name field
+                { name: 'entry.1470220851', value: phone },          // Phone field
+                { name: 'entry.400258616', value: table },           // Table number field (NEW)
+                { name: 'entry.406969459', value: notes },           // Special instructions
+                { name: 'entry.819197638', value: orderDetails },    // Order details
+                { name: 'entry.2003693330', value: total.toString() }// Total amount
+            ];
+            
+            fields.forEach(field => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = field.name;
+                input.value = field.value;
+                form.appendChild(input);
+            });
+            
+            // Add the form to the document and submit it
+            document.body.appendChild(form);
+            form.submit();
+            
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(form);
+                resolve();
+            }, 1000);
+            
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Initialize app on load
+document.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
